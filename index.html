@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>MOLT — choose your soft season</title>
+<meta name="description" content="A shore crab game about scheduling your own vulnerability. Forage, watch the tide and the gulls, then choose when and where to spend the sixty defenseless seconds that let you grow." />
+<meta property="og:title" content="MOLT" />
+<meta property="og:description" content="Growth means a soft season. Choose yours." />
+<meta property="og:type" content="website" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A6%80%3C/text%3E%3C/svg%3E" />
+<style>
+  :root {
+    color-scheme: dark;
+    --ink-deep: #0a1420;
+    --ink-mid: #0f1e30;
+    --ink-pool: #142942;
+    --moon: #d9e6f2;
+    --moon-dim: #8fa3b8;
+    --stone: #2c3e50;
+    --stone-light: #3f5468;
+    --danger: #d97b6c;
+    --safe: #7fb8a3;
+    --gold: #c9a86a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--ink-deep);
+    color: var(--moon);
+    font-family: Georgia, 'Times New Roman', serif;
+    height: 100%;
+  }
+  body {
+    display: flex;
+    justify-content: center;
+    min-height: 100dvh;
+  }
+  #app {
+    width: 100%;
+    max-width: 480px;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    position: relative;
+    background: radial-gradient(ellipse at 50% 0%, var(--ink-pool) 0%, var(--ink-deep) 70%);
+  }
+  .screen { display: none; flex-direction: column; flex: 1; gap: 14px; }
+  .screen.active { display: flex; }
+  h1 {
+    font-size: 2.6rem;
+    letter-spacing: 0.12em;
+    margin: 0.3em 0 0;
+    text-align: center;
+    color: var(--moon);
+    text-shadow: 0 0 24px rgba(217,230,242,0.25);
+  }
+  .tagline {
+    text-align: center;
+    color: var(--moon-dim);
+    font-style: italic;
+    margin: 0 0 0.6em;
+    font-size: 0.98rem;
+  }
+  .crabmark { display: flex; justify-content: center; margin: 6px 0 2px; }
+  canvas#stage { width: 100%; height: 190px; border-radius: 14px; background: linear-gradient(180deg, var(--ink-pool), var(--ink-mid)); display: block; }
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--stone-light);
+    color: var(--moon);
+    border: 1px solid rgba(217,230,242,0.15);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 1.05rem;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:hover { background: #4a6072; }
+  .btn.primary { background: var(--gold); color: #1a1206; font-weight: bold; border: none; }
+  .btn.primary:hover { background: #d9b978; }
+  .btn.ghost { background: transparent; border: 1px solid rgba(217,230,242,0.25); }
+  .btn.danger { border-color: rgba(217,123,108,0.5); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn small { display: block; color: var(--moon-dim); font-size: 0.78rem; margin-top: 2px; font-style: italic; }
+  .row { display: flex; gap: 10px; }
+  .row .btn { flex: 1; }
+  p { line-height: 1.55; color: var(--moon); font-size: 0.98rem; }
+  .dim { color: var(--moon-dim); }
+  .card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(217,230,242,0.1);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .statline { display: flex; justify-content: space-between; align-items: center; font-size: 0.92rem; margin: 4px 0; }
+  .bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; margin-top: 4px; }
+  .bar > div { height: 100%; background: var(--gold); transition: width 0.3s; }
+  .spots { display: flex; flex-direction: column; gap: 8px; }
+  .spot {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(217,230,242,0.12);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .spot.blocked { opacity: 0.4; }
+  .spot .name { font-weight: bold; }
+  .spot .sub { color: var(--moon-dim); font-size: 0.82rem; margin-top: 2px; }
+  .sign {
+    display: inline-block;
+    font-size: 0.78rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 6px;
+  }
+  .sign.clear { background: rgba(127,184,163,0.18); color: var(--safe); }
+  .sign.present { background: rgba(217,123,108,0.2); color: var(--danger); }
+  .sign.unknown { background: rgba(217,230,242,0.08); color: var(--moon-dim); }
+  .spotactions { display: flex; gap: 8px; margin-top: 8px; }
+  .spotactions .btn { padding: 8px 10px; font-size: 0.85rem; }
+  footer.tidebar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--moon-dim);
+    font-size: 0.85rem;
+    padding-top: 8px;
+    border-top: 1px solid rgba(217,230,242,0.08);
+  }
+  .softwrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; }
+  .softtext { font-size: 1.15rem; font-style: italic; color: var(--moon); min-height: 2.6em; }
+  .countdown { font-size: 3.2rem; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .resultbig { font-size: 1.6rem; text-align: center; margin: 10px 0; }
+  .sharebox {
+    background: rgba(255,255,255,0.04);
+    border: 1px dashed rgba(217,230,242,0.25);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.88rem;
+    color: var(--moon-dim);
+    word-break: break-word;
+  }
+  .scoretable { display: flex; justify-content: space-around; text-align: center; margin: 10px 0; }
+  .scoretable div span { display: block; font-size: 1.4rem; color: var(--gold); }
+  .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .rankname { text-transform: capitalize; }
+  a.linklike { color: var(--gold); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TITLE -->
+  <section class="screen active" id="screen-title">
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:10px;">
+      <h1>MOLT</h1>
+      <p class="tagline">growth means a soft season. choose yours.</p>
+      <div class="crabmark"><canvas id="titleCanvas" width="220" height="140" style="width:220px;height:140px;"></canvas></div>
+      <div style="height:8px;"></div>
+      <button class="btn primary" id="btn-play">Wake at low tide</button>
+      <button class="btn ghost" id="btn-howto">How the pool works</button>
+    </div>
+    <footer class="tidebar"><span class="dim">a rockpool, moon-silver on wet stone</span></footer>
+  </section>
+
+  <!-- HOW TO -->
+  <section class="screen" id="screen-howto">
+    <h1 style="font-size:1.6rem;">how the pool works</h1>
+    <div class="card">
+      <p><strong>Forage</strong> to grow. Every bite of weed and spat adds up.</p>
+      <p><strong>Scout</strong> a hideout to learn, right now, whether a hunter is watching it. Their rounds repeat — watch long enough and you'll know their rhythm.</p>
+      <p><strong>Wait</strong> when the moment is wrong. The tide keeps turning whether you move or not.</p>
+      <p>When you've grown enough, <strong>molt</strong>. Pick the hideout and the moment. For the sixty seconds after, you cannot fight, you can barely walk — you can only have chosen well.</p>
+      <p class="dim">Eight molts to king of the pool. No shell survives forever by accident.</p>
+    </div>
+    <button class="btn ghost" id="btn-howto-back">Back</button>
+  </section>
+
+  <!-- PLAY -->
+  <section class="screen" id="screen-play">
+    <div class="top">
+      <div>
+        <div class="rankname" id="rankLabel">sliver</div>
+        <div class="dim" id="moltLabel" style="font-size:0.8rem;">shell 1 of 8</div>
+      </div>
+      <div style="text-align:right;">
+        <div id="tideLabel">slack tide</div>
+        <div class="dim" id="tickLabel" style="font-size:0.8rem;"></div>
+      </div>
+    </div>
+
+    <canvas id="stage" width="440" height="190"></canvas>
+
+    <div class="card">
+      <div class="statline">
+        <span>growth</span>
+        <span id="growthNum">0 / 10</span>
+      </div>
+      <div class="bar"><div id="growthBar" style="width:0%;"></div></div>
+      <div class="statline" style="margin-top:8px;">
+        <span>scars</span>
+        <span id="scarsNum">0</span>
+      </div>
+    </div>
+
+    <div class="spots" id="spotsList"></div>
+
+    <button class="btn primary" id="btn-molt" disabled>Molt here — not ready</button>
+    <div class="row">
+      <button class="btn ghost" id="btn-wait">Wait a tick</button>
+      <button class="btn ghost" id="btn-restart-inline">Start over</button>
+    </div>
+  </section>
+
+  <!-- SOFT (molt window) -->
+  <section class="screen" id="screen-soft">
+    <div class="softwrap">
+      <div class="softtext" id="softText">You wedge into the eelgrass and go still.</div>
+      <div class="countdown" id="softCountdown">60</div>
+      <div class="dim" id="softSub">the old shell is already cracking</div>
+    </div>
+  </section>
+
+  <!-- RESULT: survived -->
+  <section class="screen" id="screen-survived">
+    <div class="softwrap">
+      <div class="resultbig" id="survivedTitle">You held. New shell, bigger crab.</div>
+      <div class="scoretable">
+        <div><span id="survivedRank">–</span>rank</div>
+        <div><span id="survivedMolts">–</span>molts</div>
+      </div>
+      <div class="sharebox" id="shareText"></div>
+      <button class="btn primary" id="btn-continue">Back to the pool</button>
+    </div>
+  </section>
+
+  <!-- RESULT: king -->
+  <section class="screen" id="screen-king">
+    <div class="softwrap">
+      <div class="resultbig">King of the pool.</div>
+      <p>Eight soft seasons, eight times you chose right. Nothing left in this rockpool can touch you — you grew into that, on purpose, in the open.</p>
+      <div class="sharebox" id="shareTextKing"></div>
+      <button class="btn primary" id="btn-restart-king">Begin again, another pool</button>
+    </div>
+  </section>
+
+  <!-- RESULT: died -->
+  <section class="screen" id="screen-died">
+    <div class="softwrap">
+      <div class="resultbig">The gull found you soft.</div>
+      <p id="diedLine" class="dim">Wrong hideout, wrong minute. Every crab that ever grew took this same chance — most don't tell that part.</p>
+      <button class="btn primary" id="btn-restart-died">Try another pool</button>
+    </div>
+  </section>
+
+</div>
+<script type="module" src="./game.js"></script>
+</body>
+</html>
